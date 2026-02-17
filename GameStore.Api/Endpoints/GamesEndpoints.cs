@@ -1,6 +1,8 @@
 using System;
+using System.Security.Claims;
 using GameStore.Api.Data;
 using GameStore.Api.Dtos;
+using GameStore.Api.Extensions;
 using GameStore.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,43 +15,69 @@ public static class GamesEndpoints
 
     public static void MapGamesEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/games").WithTags("Games");
-        // GET /games
-        group.MapGet("/", async (GameStoreContext dbContext) =>
+        var group = app.MapGroup("/games")
+            .WithTags("Games")
+            .RequireAuthorization();
+
+        // GET /games - List games owned by authenticated user
+        group.MapGet("/", async (GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
-            var games = await dbContext.Games.Include(game => game.Genre).Select(game => new GameSummaryDto(
-                game.Id,
-                game.Name,
-                game.Genre!.Name,
-                game.Price,
-                game.ReleaseDate
-            )).AsNoTracking().ToListAsync();
+            var userId = user.GetUserId();
+            
+            var games = await dbContext.Games
+                .Include(game => game.Genre)
+                .Where(game => game.OwnerId == userId)
+                .Select(game => new GameSummaryDto(
+                    game.Id,
+                    game.Name,
+                    game.Genre!.Name,
+                    game.Price,
+                    game.ReleaseDate
+                ))
+                .AsNoTracking()
+                .ToListAsync();
 
             return Results.Ok(games);
         });
 
-        // GET /games/{id}
-        group.MapGet("/{id}", async (int id, GameStoreContext dbContext) =>
+        // GET /games/{id} - Get one game by ID (only if owned by user)
+        group.MapGet("/{id}", async (int id, GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
+            var userId = user.GetUserId();
+            
             var game = await dbContext.Games.FindAsync(id);
-            return game is not null ? Results.Ok(new GameDetailsDto(
+            
+            if (game is null)
+            {
+                return Results.NotFound();
+            }
+            
+            if (game.OwnerId != userId)
+            {
+                return Results.Forbid();
+            }
+            
+            return Results.Ok(new GameDetailsDto(
                 game.Id,
                 game.Name,
                 game.GenreId,
                 game.Price,
                 game.ReleaseDate
-            )) : Results.NotFound();
+            ));
         }).WithName(GetGameEndPointName);
 
-        // POST /games
-        group.MapPost("/", async (CreateGameDto newGame, GameStoreContext dbContext) =>
+        // POST /games - Create a game (assigns current user as owner)
+        group.MapPost("/", async (CreateGameDto newGame, GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
+            var userId = user.GetUserId();
+            
             Game game = new()
             {
                 Name = newGame.Name,
                 GenreId = newGame.GenreId,
                 Price = newGame.Price,
-                ReleaseDate = newGame.ReleaseDate
+                ReleaseDate = newGame.ReleaseDate,
+                OwnerId = userId
             };
 
             dbContext.Games.Add(game);
@@ -60,13 +88,20 @@ public static class GamesEndpoints
             return Results.CreatedAtRoute(GetGameEndPointName, new { id = game.Id }, gameDetails);
         });
 
-        // PUT /games/{id}
-        group.MapPut("/{id}", async (int id, UpdateGameDto updatedGame, GameStoreContext dbContext) =>
+        // PUT /games/{id} - Update a game (only if owned by user)
+        group.MapPut("/{id}", async (int id, UpdateGameDto updatedGame, GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
+            var userId = user.GetUserId();
+            
             var existingGame = await dbContext.Games.FindAsync(id);
             if (existingGame is null)
             {
                 return Results.NotFound();
+            }
+            
+            if (existingGame.OwnerId != userId)
+            {
+                return Results.Forbid();
             }
 
             existingGame.Name = updatedGame.Name;
@@ -79,13 +114,20 @@ public static class GamesEndpoints
             return Results.Ok(existingGame);
         });
 
-        // DELETE /games/{id}
-        group.MapDelete("/{id}", async (int id, GameStoreContext dbContext) =>
+        // DELETE /games/{id} - Delete a game (only if owned by user)
+        group.MapDelete("/{id}", async (int id, GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
+            var userId = user.GetUserId();
+            
             var gameToDelete = await dbContext.Games.FindAsync(id);
             if (gameToDelete is null)
             {
                 return Results.NotFound();
+            }
+            
+            if (gameToDelete.OwnerId != userId)
+            {
+                return Results.Forbid();
             }
 
             dbContext.Games.Remove(gameToDelete);

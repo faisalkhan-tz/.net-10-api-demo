@@ -4,6 +4,8 @@ A simple game catalog API built with ASP.NET Core Minimal APIs and Entity Framew
 
 ## Features
 
+- **JWT Bearer Token Authentication** - Secure user authentication with JWT tokens
+- **Authorization** - Games are connected to their owners; users can only manage their own games
 - CRUD endpoints for games
 - Read endpoint for genres
 - SQLite persistence with EF Core migrations
@@ -15,6 +17,8 @@ A simple game catalog API built with ASP.NET Core Minimal APIs and Entity Framew
 - ASP.NET Core (`net10.0`)
 - Entity Framework Core 10
 - SQLite
+- JWT Bearer Authentication
+- BCrypt for password hashing
 
 ## Project Structure
 
@@ -25,6 +29,7 @@ A simple game catalog API built with ASP.NET Core Minimal APIs and Entity Framew
   - `Data/` (DbContext, migrations, seeding)
   - `Models/` (entities)
   - `Dtos/` (request/response contracts)
+  - `Services/` (JWT token generation)
   - `Games.http` (sample HTTP requests)
 
 ## Prerequisites
@@ -59,19 +64,63 @@ Connection string (`GameStore.Api/appsettings.json`):
 
 Seeded genres are inserted automatically the first time the database is created/migrated.
 
+## Authentication
+
+The API uses JWT Bearer token authentication. Before accessing game endpoints, you must register or login to obtain a token.
+
+### Authentication Endpoints
+
+- `POST /auth/register` - Register a new user
+- `POST /auth/login` - Login with existing user
+
+### Example: Register
+
+```json
+POST /auth/register
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "securepassword123"
+}
+```
+
+Response:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "username": "johndoe"
+}
+```
+
+### Using the Token
+
+Include the token in the `Authorization` header for all game endpoints:
+
+```
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
 ## API Endpoints
 
-### Games
+### Authentication
 
-- `GET /games` - List all games
-- `GET /games/{id}` - Get one game by ID
-- `POST /games` - Create a game
-- `PUT /games/{id}` - Update a game
-- `DELETE /games/{id}` - Delete a game
+- `POST /auth/register` - Register a new user
+- `POST /auth/login` - Login with existing user
+
+### Games (Requires Authentication)
+
+All game endpoints require authentication. Users can only access and manage their own games.
+
+- `GET /games` - List all games owned by the authenticated user
+- `GET /games/{id}` - Get one game by ID (only if owned by user)
+- `POST /games` - Create a game (automatically assigned to authenticated user)
+- `PUT /games/{id}` - Update a game (only if owned by user)
+- `DELETE /games/{id}` - Delete a game (only if owned by user)
 
 ### Genres
 
-- `GET /genres` - List all genres
+- `GET /genres` - List all genres (no authentication required)
 
 You can run sample requests from:
 
@@ -98,6 +147,13 @@ dotnet ef database update
 ```
 
 If you hit `PendingModelChangesWarning`, create a new migration to match model changes, then update the database.
+
+## Security Notes
+
+- JWT secret key is configured in `appsettings.json` - **change this in production**
+- Passwords are hashed using BCrypt before storage
+- Each user can only access and modify their own games
+- Game ownership is enforced at the API level
 
 ## Notes
 
