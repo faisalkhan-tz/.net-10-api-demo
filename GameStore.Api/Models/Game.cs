@@ -10,4 +10,6 @@ public class Game
     public int GenreId { get; set; }
     public decimal Price { get; set; }
     public DateOnly ReleaseDate { get; set; }
+    public int OwnerId { get; set; }
+    public User? Owner { get; set; }
 }

@@ -1,0 +1,8 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace GameStore.Api.Dtos;
+
+public record RegisterDto(
+    [Required][StringLength(50, MinimumLength = 3)] string Username,
+    [Required][StringLength(100, MinimumLength = 6)] string Password
+);
