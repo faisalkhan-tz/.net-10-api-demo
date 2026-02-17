@@ -1,0 +1,35 @@
+@baseUrl = http://localhost:5045
+
+### Get all games
+GET {{baseUrl}}/games
+
+### Get game by ID
+GET {{baseUrl}}/games/1
+
+### Create a new game
+POST {{baseUrl}}/games
+Content-Type: application/json
+
+{
+  "name": "Elden Ring",
+  "genreId": 1,
+  "price": 59.99,
+  "releaseDate": "2022-02-25"
+}
+
+### Update a game
+PUT {{baseUrl}}/games/1
+Content-Type: application/json
+
+{
+  "name": "Street Fighter II Turbo",
+  "genreId": 2,
+  "price": 24.99,
+  "releaseDate": "1992-02-01"
+}
+
+### Delete a game
+DELETE {{baseUrl}}/games/3
+
+### Get all genres
+GET {{baseUrl}}/genres
