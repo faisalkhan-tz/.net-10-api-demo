@@ -1,14 +1,38 @@
 @baseUrl = http://localhost:5045
 
-### Get all games
+### Register a new user
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "securepassword123"
+}
+
+### Login with existing user
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "securepassword123"
+}
+
+### Set the token (copy from login/register response)
+@token = YOUR_TOKEN_HERE
+
+### Get all games (requires authentication)
 GET {{baseUrl}}/games
+Authorization: Bearer {{token}}
 
-### Get game by ID
+### Get game by ID (requires authentication, only returns if owned by user)
 GET {{baseUrl}}/games/1
+Authorization: Bearer {{token}}
 
-### Create a new game
+### Create a new game (requires authentication)
 POST {{baseUrl}}/games
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "name": "Elden Ring",
@@ -17,9 +41,10 @@ Content-Type: application/json
   "releaseDate": "2022-02-25"
 }
 
-### Update a game
+### Update a game (requires authentication, only updates if owned by user)
 PUT {{baseUrl}}/games/1
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "name": "Street Fighter II Turbo",
@@ -28,8 +53,9 @@ Content-Type: application/json
   "releaseDate": "1992-02-01"
 }
 
-### Delete a game
+### Delete a game (requires authentication, only deletes if owned by user)
 DELETE {{baseUrl}}/games/3
+Authorization: Bearer {{token}}
 
-### Get all genres
+### Get all genres (no authentication required)
 GET {{baseUrl}}/genres
