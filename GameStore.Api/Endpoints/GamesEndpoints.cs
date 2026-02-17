@@ -2,6 +2,7 @@ using System;
 using System.Security.Claims;
 using GameStore.Api.Data;
 using GameStore.Api.Dtos;
+using GameStore.Api.Extensions;
 using GameStore.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,7 +22,7 @@ public static class GamesEndpoints
         // GET /games - List games owned by authenticated user
         group.MapGet("/", async (GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
-            var userId = int.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = user.GetUserId();
             
             var games = await dbContext.Games
                 .Include(game => game.Genre)
@@ -42,7 +43,7 @@ public static class GamesEndpoints
         // GET /games/{id} - Get one game by ID (only if owned by user)
         group.MapGet("/{id}", async (int id, GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
-            var userId = int.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = user.GetUserId();
             
             var game = await dbContext.Games.FindAsync(id);
             
@@ -68,7 +69,7 @@ public static class GamesEndpoints
         // POST /games - Create a game (assigns current user as owner)
         group.MapPost("/", async (CreateGameDto newGame, GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
-            var userId = int.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = user.GetUserId();
             
             Game game = new()
             {
@@ -90,7 +91,7 @@ public static class GamesEndpoints
         // PUT /games/{id} - Update a game (only if owned by user)
         group.MapPut("/{id}", async (int id, UpdateGameDto updatedGame, GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
-            var userId = int.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = user.GetUserId();
             
             var existingGame = await dbContext.Games.FindAsync(id);
             if (existingGame is null)
@@ -116,7 +117,7 @@ public static class GamesEndpoints
         // DELETE /games/{id} - Delete a game (only if owned by user)
         group.MapDelete("/{id}", async (int id, GameStoreContext dbContext, ClaimsPrincipal user) =>
         {
-            var userId = int.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = user.GetUserId();
             
             var gameToDelete = await dbContext.Games.FindAsync(id);
             if (gameToDelete is null)

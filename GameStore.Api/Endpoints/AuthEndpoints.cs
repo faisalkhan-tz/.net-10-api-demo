@@ -43,7 +43,19 @@ public static class AuthEndpoints
             // Find user by username
             var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Username == loginDto.Username);
             
-            if (user is null || !JwtService.VerifyPassword(loginDto.Password, user.PasswordHash))
+            // Always verify password even if user is null to prevent timing attacks
+            bool isValidPassword = false;
+            if (user is not null)
+            {
+                isValidPassword = JwtService.VerifyPassword(loginDto.Password, user.PasswordHash);
+            }
+            else
+            {
+                // Perform a dummy password verification to maintain consistent timing
+                JwtService.VerifyPassword(loginDto.Password, "$2a$11$DummyHashToPreventTimingAttack1234567890");
+            }
+
+            if (user is null || !isValidPassword)
             {
                 return Results.Unauthorized();
             }
